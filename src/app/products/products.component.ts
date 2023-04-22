@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Product } from '../model/product.model';
 import { ProductService } from '../services/product.service';
+import { FormGroup } from '@angular/forms';
+import { FormBuilder } from '@angular/forms';
 
 @Component({
   selector: 'app-products',
@@ -9,12 +11,33 @@ import { ProductService } from '../services/product.service';
 })
 export class ProductsComponent implements OnInit {
   products! : Array<Product>;
+  currentPage : number = 0;
+  pageSize: number = 5;
+  totalPages : number = 0;
   errorMessage! : String; 
+  searchFormGroup! : FormGroup;
+  currentAction : string="all";
 
-  constructor(private productService : ProductService) {}
+  constructor(private productService : ProductService, private fb : FormBuilder) {}
   
   ngOnInit():void {
-    this.handleGetAllProducts();
+    this.searchFormGroup = this.fb.group({
+      keyword : this.fb.control(null),
+    })
+    this.handleGetPageProducts();
+  }
+  handleGetPageProducts(){
+    this.productService.getPageProducts(this.currentPage, this.pageSize).subscribe(
+      {
+        next : (data) => {
+          this.products = data.products;
+          this.totalPages = data.totalPages;
+        },
+        error : (err) =>{
+          this.errorMessage = err;
+        }
+      }
+    );
   }
   handleGetAllProducts(){
     this.productService.getAllProducts().subscribe(
@@ -55,6 +78,28 @@ export class ProductsComponent implements OnInit {
         }
       }
     )
-    
+
+  }
+  handleSearchProducts(){
+    this.currentAction = "search";
+    let keyword = this.searchFormGroup.value.keyword;
+    this.productService.searchProducts(keyword, this.currentPage, this.pageSize).subscribe(
+      {
+        next : (data) => {
+          this.products = data.products;
+          this.totalPages = data.totalPages;
+        },
+        error : (err) =>{
+          this.errorMessage = err;
+        }
+      }
+    )
+  }
+  gotoPage(i: number){
+    this.currentPage = i;
+    if (this.currentAction === 'all')
+      this.handleGetPageProducts();
+    else
+      this.handleSearchProducts();
   }
 }
